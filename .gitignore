@@ -1,0 +1,32 @@
+# Compiled files
+*.class
+*.jar
+*.war
+
+# Gradle
+.gradle/
+build/
+target/
+!gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application
+application-local.yml
+application-dev.yml
