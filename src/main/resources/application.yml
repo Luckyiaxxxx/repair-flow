@@ -2,19 +2,35 @@ spring:
   application:
     name: repair-flow
 
-  # 临时禁用数据库和 Redis 自动配置（等后面再开启）
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+  # ---------- 数据源配置 ----------
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/repair_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
 
-  # Jackson 日期格式
+  # ---------- Redis 配置（先注释掉，后面再用） ----------
+  # data:
+  #   redis:
+  #     host: localhost
+  #     port: 6379
+  #     database: 0
+  #     timeout: 5000ms
+
+  # ---------- Jackson 日期格式 ----------
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
 
-# 日志配置
+# ---------- MyBatis 配置 ----------
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.repair.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# ---------- 日志配置 ----------
 logging:
   level:
     com.repair: debug
