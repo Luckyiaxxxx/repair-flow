@@ -30,7 +30,7 @@ public interface UserMapper {
 
     //按id查询
     @Select("SELECT * FROM user WHERE id = #{id}")
-    User selectById(User user);
+    User selectById(Integer id);
     //按名字查询
     @Select("SELECT * FROM user WHERE username = #{username}")
     User seletcByUsername(String username);
