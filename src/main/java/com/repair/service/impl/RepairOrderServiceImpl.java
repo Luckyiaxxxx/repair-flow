@@ -8,6 +8,8 @@ import com.repair.mapper.UserMapper;
 import com.repair.service.RepairOrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -88,6 +90,126 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         }
         return order;
     }
+
+    @Override
+    public List<RepairOrder> getPendingOrders(){
+        return repairOrderMapper.selectPendingOrders();
+    }
+
+    @Override
+    @Transactional
+    public void assignOrder(Integer orderId,Integer workerId,Integer dispatcherId){
+        //1.校验报修单是否存在
+        RepairOrder order = repairOrderMapper.selectById(orderId);
+        if(order == null){
+            throw new BusinessException("该报单不存在");
+        }
+
+        //2.校验保修单状态是否位“代派单”
+        if(order.getStatus()!=1){
+            throw new BusinessException("该报修单已被处理，无法派单");
+        }
+
+        //3.校验维修工是否存在且角色是维修工
+        User worker = userMapper.selectById(workerId);
+        if(worker==null){
+            throw new BusinessException("维修工不存在");
+        }
+        if(worker.getRole()!=3){
+            throw new BusinessException("该用户不是维修工");
+        }
+
+        //4.校验客服是否存在
+        User dispatcher = userMapper.selectById(dispatcherId);
+        if(dispatcher ==null){
+            throw new BusinessException("客服不存在");
+        }
+
+        //5.更新报修单
+        order.setWorkerId(workerId);
+        order.setDispatcherId(dispatcherId);
+        order.setStatus(2);
+        order.setAssignedAt(LocalDateTime.now());
+
+        //6.保存到数据库
+        repairOrderMapper.updateById(order);
+    }
+
+
+    @Override
+    public List<RepairOrder> getOrdersByWorkerId(Integer workerId){
+        if(workerId==null){
+            throw new BusinessException("维修工Id不能为空");
+        }
+        return repairOrderMapper.selectByWorkerId(workerId);
+    }
+
+    @Override
+    @Transactional
+    public void acceptOrder(Integer orderId, Integer workerId){
+        //1.校验报修单是否存在
+        RepairOrder order = repairOrderMapper.selectById(orderId);
+        if(order==null){
+            throw new BusinessException("报修单不存在");
+        }
+
+        //2.校验报修单状态是否为“已派单”
+        if(order.getStatus()!=2){
+            throw new BusinessException("该报修单无法接单");
+        }
+
+        //3.校验维修工是否存在且角色是维修工
+        User worker = userMapper.selectById(workerId);
+        if(worker == null){
+            throw new BusinessException("维修工不存在");
+        }
+        if(worker.getRole()!=3){
+            throw new BusinessException("该用户不是维修工");
+        }
+
+        //4.更新报修单
+        order.setWorkerId(workerId);
+        order.setStatus(3);
+        order.setAcceptedAt(LocalDateTime.now());
+
+        //5.保存
+        repairOrderMapper.updateById(order);
+    }
+
+    @Override
+    @Transactional
+    public void completeOrder(Integer orderId,String repairNote,Integer repairDuration){
+        //1.校验报修单是否存在
+        RepairOrder order =repairOrderMapper.selectById(orderId);
+        if(order == null){
+            throw new BusinessException("保修单不存在");
+        }
+
+        //2.校验报修单状态是否为“维修中”
+        if(order.getStatus()!=3){
+            throw new BusinessException("该保修单无法完工");
+        }
+
+        //3.校验维修记录不能为空
+        if(repairNote==null || repairNote.trim().isEmpty()){
+            throw new BusinessException("维修记录不能为空");
+        }
+
+        //4.校验维修耗时不能为空
+        if(repairDuration ==null ||repairDuration<=0){
+            throw new BusinessException("维修耗时必须大于0");
+        }
+
+        //5.更新报修单
+        order.setStatus(4);
+        order.setRepairNote(repairNote);
+        order.setRepairDuration(repairDuration);
+        order.setCompletedAt(LocalDateTime.now());
+
+        //6.保存
+        repairOrderMapper.updateById(order);
+    }
+
 
 
     /**

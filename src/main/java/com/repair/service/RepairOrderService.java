@@ -28,4 +28,44 @@ public interface RepairOrderService {
      * @return 报修单详情
      */
     RepairOrder getOrderById(Integer orderId);
+
+    /**
+     * 客服派单
+     * @param orderId  报修单ID
+     * @param workerId  维修工ID
+     * @param dispatcherId  客服ID
+     */
+    void assignOrder(Integer orderId , Integer workerId , Integer dispatcherId);
+
+    /**
+     *
+     * @return “待处理”的代派单
+     */
+    List<RepairOrder> getPendingOrders();
+
+    /**
+     * 查询维修工的工单列表
+     * @param workerId   维修工ID
+     * @return  维修工列表
+     */
+    List<RepairOrder> getOrdersByWorkerId(Integer workerId);
+
+    /**
+     * 维修工接单
+     * @param orderId 报修单Id
+     * @param workerId 维修工Id
+     */
+    void acceptOrder(Integer orderId,Integer workerId);
+
+    /**
+     *
+     * @param orderId 报修单id
+     * @param repairNote   维修备注
+     * @param repairDuration  维修时长
+     */
+    void completeOrder(Integer orderId,String repairNote,Integer repairDuration);
+
+
+
+
 }
