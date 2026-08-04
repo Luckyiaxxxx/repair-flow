@@ -65,6 +65,15 @@ public interface RepairOrderService {
      */
     void completeOrder(Integer orderId,String repairNote,Integer repairDuration);
 
+    /**
+     * 业主评价
+     * @param orderId   报修单ID
+     * @param ownerId   业主ID
+     * @param score     评分（1~5星）
+     * @param commit    评价内容
+     */
+//    void evaluateOrder(Integer orderId,Integer ownerId,Integer score , String commit);
+
 
 
 

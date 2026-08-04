@@ -9,18 +9,26 @@ spring:
     username: root
     password: 123456
 
-  # ---------- Redis 配置（先注释掉，后面再用） ----------
-  # data:
-  #   redis:
-  #     host: localhost
-  #     port: 6379
-  #     database: 0
-  #     timeout: 5000ms
+  # ---------- Redis 配置 ----------
+  data:
+    redis:
+      host: 192.168.43.136
+      port: 6379
+      database: 0
+      timeout: 5000ms
+      connect-timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
 
   # ---------- Jackson 日期格式 ----------
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
 
 # ---------- MyBatis 配置 ----------
 mybatis:
@@ -34,3 +42,8 @@ mybatis:
 logging:
   level:
     com.repair: debug
+
+# ---------- JWT 配置 ----------
+jwt:
+  secret: repair-flow-secret-key-2024-this-is-256-bit-secret-key
+  expiration: 7200000          # 2小时

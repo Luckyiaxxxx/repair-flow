@@ -3,9 +3,11 @@ package com.repair.service.impl;
 import com.repair.common.BusinessException;
 import com.repair.entity.RepairOrder;
 import com.repair.entity.User;
+import com.repair.mapper.EvaluationMapper;
 import com.repair.mapper.RepairOrderMapper;
 import com.repair.mapper.UserMapper;
 import com.repair.service.RepairOrderService;
+import com.repair.util.RedisUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -14,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @description:
@@ -29,6 +33,16 @@ public class RepairOrderServiceImpl implements RepairOrderService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private EvaluationMapper evaluationMapper;
+
+    @Autowired
+    private RedisUtil redisUtil;
+
+    private static final String CACHE_KEY_ORDER = "repair:order:";
+    private static final String CACHE_KEY_ORDERS = "repair:orders:owner:";
+    private static final long CACHE_EXPIRE_TIME = 30; // 30分钟
 
     @Override
     public RepairOrder submitOrder(RepairOrder order ,Integer ownerId){
@@ -68,6 +82,11 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         if(row<=0){
             throw  new BusinessException("提交报修失败，请稍后重试");
         }
+
+        //清楚该业主的列表缓存
+        String cacheKey = CACHE_KEY_ORDERS + ownerId;
+        redisUtil.delete(cacheKey);
+        System.out.println("清除缓存"+cacheKey);
         return order;
     }
 
@@ -76,7 +95,26 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         if(ownerId==null){
             throw new BusinessException("业主ID不能为空");
         }
-        return  repairOrderMapper.selectByOwnerId(ownerId);
+
+        //1.先从缓存取
+        String cacheKey = CACHE_KEY_ORDERS+ownerId;
+        Object cached = redisUtil.get(cacheKey);
+        if(cached!=null){
+            System.out.println("从缓存获取报修列表:ownerId="+ownerId);
+            return (List<RepairOrder>) cached;
+        }
+
+        //2.缓存没有，查数据库
+        System.out.println("从数据库查询报修列表: ownerId=" + ownerId);
+        List<RepairOrder> orders = repairOrderMapper.selectByOwnerId(ownerId);
+
+
+        //3.存数据库
+        if(orders!=null&&!orders.isEmpty()){
+            redisUtil.set(cacheKey,orders,CACHE_EXPIRE_TIME,TimeUnit.MINUTES);
+            System.out.println("报修列表已缓存: ownerId=" + ownerId);
+        }
+        return orders;
     }
 
     @Override
@@ -84,10 +122,33 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         if(orderId==null){
             throw new BusinessException("报修单ID不能为空");
         }
+
+        //1.先从缓存里取
+        String cacheKey = CACHE_KEY_ORDER + orderId;
+        Object cached = redisUtil.get(cacheKey);
+        if(cached!=null){
+            System.out.println("从缓存获取报修单"+orderId);
+            // 处理类型转换：如果存的是 LinkedHashMap，转成 RepairOrder
+            if (cached instanceof RepairOrder) {
+                return (RepairOrder) cached;
+            } else {
+                // 用 Jackson 转成 RepairOrder
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+                return mapper.convertValue(cached, RepairOrder.class);
+            }
+        }
+
+        //2.缓存没有，查数据库
+        System.out.println("从数据库里查询报修单："+ orderId);
         RepairOrder order = repairOrderMapper.selectById(orderId);
         if(order==null){
             throw new BusinessException("报修单不存在");
         }
+
+        //3.存入缓存
+        redisUtil.set(cacheKey, order, CACHE_EXPIRE_TIME, TimeUnit.MINUTES);
+        System.out.println("报修单已缓存"+orderId);
         return order;
     }
 
@@ -208,9 +269,38 @@ public class RepairOrderServiceImpl implements RepairOrderService {
 
         //6.保存
         repairOrderMapper.updateById(order);
+
+        //7.清除缓存
+        String orderCacheKey = CACHE_KEY_ORDER +orderId;
+        String listCacheKey = CACHE_KEY_ORDERS + order.getOwnerId();
+        redisUtil.delete(orderCacheKey);
+        redisUtil.delete(listCacheKey);
+        System.out.println("清除缓存"+ orderCacheKey + ", " + listCacheKey);
     }
 
-
+//    @Override
+//    @Transactional
+//    public void evaluateOrder(Integer orderId, Integer ownerId, Integer score, String comment){
+//        //1.校验报修单是否存在
+//        RepairOrder order = repairOrderMapper.selectById(orderId);
+//        if(order ==null){
+//            throw new BusinessException("报修单不存在")
+//        }
+//        //2.校验是否为业主本人
+//
+//        //3.校验维修状态是否为已完工
+//
+//        //4.校验是否已经评价过
+//
+//        //5.校验评分
+//
+//        //6.创建评价对象
+//
+//
+//        //7.保存评价
+//
+//        //8.更新报修单状态
+//    }
 
     /**
      *生成工单编号：RU+yyyyMMddHHmmss+4位随机数
