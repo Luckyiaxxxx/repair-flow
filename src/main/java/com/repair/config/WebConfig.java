@@ -14,17 +14,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(jwtInterceptor)
-                .addPathPatterns("/api/**")                    // 拦截所有 /api/** 请求
-                .excludePathPatterns(
-                        "/api/owner/register",                // 放行注册
-                        "/api/owner/login",                   // 放行登录
-                        "/api/dispatcher/hello",               // 测试接口
-
-                        "/api/worker/hello",
-
-                        "/api/admin/hello",
-                        "/api/owner/hello"
-                );
+//        registry.addInterceptor(jwtInterceptor)
+//                .addPathPatterns("/api/**")                    // 拦截所有 /api/** 请求
+//                .excludePathPatterns(
+//                        "/api/owner/register",                // 放行注册
+//                        "/api/owner/login",                   // 放行登录
+//                        "/api/dispatcher/hello",               // 测试接口
+//                        "/api/worker/hello",
+//                        "/api/admin/hello",
+//                        "/api/owner/hello"
+//                );
     }
 }

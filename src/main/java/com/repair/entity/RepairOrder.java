@@ -12,7 +12,7 @@ public class RepairOrder {
     private Integer id;
     private String orderNo;
 
-    @NotNull(groups = {ValidationGroups.Add.class}, message = "业主ID不能为空")
+//    @NotNull(groups = {ValidationGroups.Add.class}, message = "业主ID不能为空")
     private Integer ownerId;
 
     @NotBlank(groups = {ValidationGroups.Add.class}, message = "楼栋不能为空")

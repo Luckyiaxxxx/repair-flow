@@ -4,6 +4,7 @@ package com.repair.controller.owner;
 
 import com.repair.common.Result;
 import com.repair.common.ValidationGroups;
+import com.repair.entity.Evaluation;
 import com.repair.entity.RepairOrder;
 import com.repair.entity.User;
 import com.repair.service.RepairOrderService;
@@ -91,6 +92,11 @@ public class OwnerController {
         return Result.success(order);
         }
 
-
+    //评价报修单
+    @PostMapping("/orders/{orderId}/evaluate")
+    public Result<String> evaluateOrder(@Validated(ValidationGroups.Add.class) @RequestBody Evaluation evaluation){
+        repairOrderService.evaluateOrder(evaluation);
+        return Result.success("评价成功");
+    }
 
 }

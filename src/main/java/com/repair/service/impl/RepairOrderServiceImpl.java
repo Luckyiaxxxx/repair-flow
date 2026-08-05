@@ -1,6 +1,7 @@
 package com.repair.service.impl;
 
 import com.repair.common.BusinessException;
+import com.repair.entity.Evaluation;
 import com.repair.entity.RepairOrder;
 import com.repair.entity.User;
 import com.repair.mapper.EvaluationMapper;
@@ -278,29 +279,47 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         System.out.println("清除缓存"+ orderCacheKey + ", " + listCacheKey);
     }
 
-//    @Override
-//    @Transactional
-//    public void evaluateOrder(Integer orderId, Integer ownerId, Integer score, String comment){
-//        //1.校验报修单是否存在
-//        RepairOrder order = repairOrderMapper.selectById(orderId);
-//        if(order ==null){
-//            throw new BusinessException("报修单不存在")
-//        }
-//        //2.校验是否为业主本人
-//
-//        //3.校验维修状态是否为已完工
-//
-//        //4.校验是否已经评价过
-//
-//        //5.校验评分
-//
-//        //6.创建评价对象
-//
-//
-//        //7.保存评价
-//
-//        //8.更新报修单状态
-//    }
+    @Override
+    @Transactional
+    public void evaluateOrder(Evaluation evaluation){
+        //1.校验报修单是否存在
+        RepairOrder order = repairOrderMapper.selectById(evaluation.getOrderId());
+        if(order ==null){
+            throw new BusinessException("报修单不存在");
+        }
+
+        //2.校验是否为业主本人
+        if(!order.getOwnerId().equals(evaluation.getOwnerId())){
+            throw new BusinessException("无权评价此报修单");
+        }
+
+        //3.校验维修状态是否为已完工
+        if(order.getStatus()!=4){
+            throw new BusinessException("该报修单还没有完工，无法评价");
+        }
+
+        //4.校验是否已经评价过
+        Evaluation existing = evaluationMapper.selectByOrderId(evaluation.getOrderId());
+        if(existing!=null){
+            throw new BusinessException("已评价，不可重复评价");
+        }
+
+        //5.设置维修工ID
+        evaluation.setWorkerId(order.getWorkerId());
+
+        //6.保存评价
+        evaluationMapper.insert(evaluation);
+
+        //7.更新报修单状态
+        order.setStatus(5);
+        repairOrderMapper.updateById(order);
+
+        //8.清除缓存
+        String orderCacheKey = CACHE_KEY_ORDER + evaluation.getOrderId();
+        String listCacheKey = CACHE_KEY_ORDERS + evaluation.getOwnerId();
+        redisUtil.delete(orderCacheKey);
+        redisUtil.delete(listCacheKey);
+    }
 
     /**
      *生成工单编号：RU+yyyyMMddHHmmss+4位随机数

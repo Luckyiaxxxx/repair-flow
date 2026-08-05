@@ -1,6 +1,7 @@
 package com.repair.service;
 
 
+import com.repair.entity.Evaluation;
 import com.repair.entity.RepairOrder;
 
 import java.util.List;
@@ -67,12 +68,9 @@ public interface RepairOrderService {
 
     /**
      * 业主评价
-     * @param orderId   报修单ID
-     * @param ownerId   业主ID
-     * @param score     评分（1~5星）
-     * @param commit    评价内容
+     * @param evaluation
      */
-//    void evaluateOrder(Integer orderId,Integer ownerId,Integer score , String commit);
+    void evaluateOrder(Evaluation evaluation);
 
 
 
