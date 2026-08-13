@@ -240,7 +240,7 @@ public class RepairOrderServiceImpl implements RepairOrderService {
 
     @Override
     @Transactional
-    public void completeOrder(Integer orderId,String repairNote,Integer repairDuration){
+    public void completeOrder(Integer orderId,String repairNote,Integer repairDuration,Double laborCost,Double materialCost){
         //1.校验报修单是否存在
         RepairOrder order =repairOrderMapper.selectById(orderId);
         if(order == null){
@@ -266,6 +266,8 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         order.setStatus(4);
         order.setRepairNote(repairNote);
         order.setRepairDuration(repairDuration);
+        order.setLaborCost(laborCost);
+        order.setMaterialCost(materialCost);
         order.setCompletedAt(LocalDateTime.now());
 
         //6.保存
@@ -319,6 +321,25 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         String listCacheKey = CACHE_KEY_ORDERS + evaluation.getOwnerId();
         redisUtil.delete(orderCacheKey);
         redisUtil.delete(listCacheKey);
+    }
+
+    @Override
+    public void deleteOrder(Integer orderId, Integer ownerId) {
+        System.out.println("deleteOrder called: orderId=" + orderId + ", ownerId=" + ownerId);
+        RepairOrder order = repairOrderMapper.selectById(orderId);
+        System.out.println("selectById result: " + order);
+        if (order == null) {
+            throw new BusinessException("报修单不存在, orderId=" + orderId);
+        }
+        if (!order.getOwnerId().equals(ownerId)) {
+            throw new BusinessException("无权删除此报修单");
+        }
+        if (order.getStatus() != 1) {
+            throw new BusinessException("仅待派单状态的报修单可以删除");
+        }
+        repairOrderMapper.deleteById(orderId);
+        redisUtil.delete(CACHE_KEY_ORDER + orderId);
+        redisUtil.delete(CACHE_KEY_ORDERS + ownerId);
     }
 
     /**

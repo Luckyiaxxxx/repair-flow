@@ -1,7 +1,6 @@
 package com.repair.mapper;
 
 import com.repair.entity.User;
-import org.apache.catalina.realm.UserDatabaseRealm;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -40,4 +39,10 @@ public interface UserMapper {
     //查询所有用户
     @Select("SELECT *FROM user")
     List<User> selectAll();
+
+    /**
+     * 统计总用户数
+     */
+    @Select("SELECT COUNT(*) FROM user")
+    Long countAll();
 }

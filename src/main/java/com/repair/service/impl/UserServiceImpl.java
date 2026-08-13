@@ -2,15 +2,28 @@ package com.repair.service.impl;
 
 import com.repair.common.BusinessException;
 import com.repair.entity.User;
+import com.repair.mapper.EvaluationMapper;
 import com.repair.mapper.UserMapper;
+import com.repair.mapper.RepairOrderMapper;
 import com.repair.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private RepairOrderMapper repairOrderMapper;
+
+    @Autowired
+    private EvaluationMapper evaluationMapper;
 
     @Override
     public User register(User user){
@@ -98,4 +111,32 @@ public class UserServiceImpl implements UserService {
         }
         return userMapper.seletcByUsername(username);
     }
+
+//    @Override
+//    public List<Map<String,Object>> getworkerPerformanceList() {
+//        //1.查询所有维修工
+//        List<User> workers = userMapper.selectByRole(3);
+//        if(workers ==null||workers.isEmpty()){
+//            return new ArrayList<>();
+//        }
+//        List<Map<String,Object>> result = new ArrayList<>();
+//
+//        for(User worker : workers){
+//            Map<String,Object> dto = new LinkedHashMap<>();
+//            dto.put("workerId",worker.getId());
+//            dto.put("realName",worker.getRealName());
+//            dto.put("skill",worker.getSkill());
+//
+//            //2.统计完工数
+//            Integer completedCount = repairOrderMapper.countCompletedByWorkerId(worker.getId());
+//            dto.put("completedCount",completedCount!=null?completedCount:0);
+//
+//            //3.统计完工率
+//            Integer totalReviews = evaluationMapper.selectCountByWorkerId(worker.getId());
+//            dto.put("totalReviews",totalReviews!=null?totalReviews:0);
+//
+//            //4.统计好评数
+//            Integer goodReviews = evaluationMapper
+//        }
+//    }
 }

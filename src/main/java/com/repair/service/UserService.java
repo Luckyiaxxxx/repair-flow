@@ -2,6 +2,9 @@ package com.repair.service;
 
 import com.repair.entity.User;
 
+import java.util.List;
+import java.util.Map;
+
 public interface UserService {
     /**
      * 用户注册
@@ -27,4 +30,9 @@ public interface UserService {
      *根据用户名查询用户
      */
     User getUserByUsername(String username);
+
+//    /**
+//     * 查询所有维修工的绩效统计
+//     */
+//    List<Map<String,Object>> getWorkerPerformanceList();
 }

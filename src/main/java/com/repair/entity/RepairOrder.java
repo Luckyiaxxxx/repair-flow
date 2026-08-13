@@ -52,6 +52,8 @@ public class RepairOrder {
 
     private Integer repairDuration;
     private String repairNote;
+    private Double laborCost;
+    private Double materialCost;
     private Integer needRevisit;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")

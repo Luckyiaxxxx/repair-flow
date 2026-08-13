@@ -42,9 +42,11 @@ public class WorkerController {
     public Result<String> completeOrder(
             @PathVariable Integer orderId,
             @RequestParam String repairNote,
-            @RequestParam Integer repairDuration
+            @RequestParam Integer repairDuration,
+            @RequestParam(required = false) Double laborCost,
+            @RequestParam(required = false) Double materialCost
     ){
-        repairOrderService.completeOrder(orderId,repairNote,repairDuration);
+        repairOrderService.completeOrder(orderId,repairNote,repairDuration,laborCost,materialCost);
         return Result.success("完工");
     }
 }
