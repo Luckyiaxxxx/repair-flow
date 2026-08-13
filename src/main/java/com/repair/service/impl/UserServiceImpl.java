@@ -112,6 +112,37 @@ public class UserServiceImpl implements UserService {
         return userMapper.seletcByUsername(username);
     }
 
+    @Override
+    public User updateProfile(Integer userId, String realName, String phone) {
+        //1.校验用户是否存在
+        User user = getUserById(userId);
+
+        //2.校验真实姓名
+        if (realName == null || realName.trim().isEmpty()) {
+            throw new BusinessException("真实姓名不能为空");
+        }
+        if (realName.trim().length() < 2 || realName.trim().length() > 20) {
+            throw new BusinessException("真实姓名长度必须在2-20位之间");
+        }
+
+        //3.校验手机号格式
+        if (phone == null || phone.trim().isEmpty()) {
+            throw new BusinessException("手机号不能为空");
+        }
+        if (!phone.trim().matches("^1[3-9]\\d{9}$")) {
+            throw new BusinessException("手机号格式不正确");
+        }
+
+        //4.更新数据库
+        int rows = userMapper.updateProfile(userId, realName.trim(), phone.trim());
+        if (rows <= 0) {
+            throw new BusinessException("修改失败，请重试");
+        }
+
+        //5.返回最新用户信息
+        return userMapper.selectById(userId);
+    }
+
 //    @Override
 //    public List<Map<String,Object>> getworkerPerformanceList() {
 //        //1.查询所有维修工

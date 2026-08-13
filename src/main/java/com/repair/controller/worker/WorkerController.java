@@ -1,6 +1,7 @@
 package com.repair.controller.worker;
 
 import com.repair.common.Result;
+import com.repair.dto.CompleteOrderRequest;
 import com.repair.entity.RepairOrder;
 import com.repair.service.RepairOrderService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,12 +42,9 @@ public class WorkerController {
     @PutMapping("/orders/{orderId}/complete")
     public Result<String> completeOrder(
             @PathVariable Integer orderId,
-            @RequestParam String repairNote,
-            @RequestParam Integer repairDuration,
-            @RequestParam(required = false) Double laborCost,
-            @RequestParam(required = false) Double materialCost
+            @RequestBody CompleteOrderRequest request
     ){
-        repairOrderService.completeOrder(orderId,repairNote,repairDuration,laborCost,materialCost);
+        repairOrderService.completeOrder(orderId, request);
         return Result.success("完工");
     }
 }

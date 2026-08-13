@@ -46,10 +46,22 @@ public interface RepairOrderMapper {
     List<RepairOrder> selectAll();
 
     /**
+     * 查询指定前缀的最大工单编号（用于生成每日自增序号）
+     */
+    @Select("SELECT MAX(order_no) FROM repair_order WHERE order_no LIKE CONCAT(#{prefix}, '%')")
+    String selectMaxOrderNoByPrefix(@Param("prefix") String prefix);
+
+    /**
      * 统计维修工的总完工数
      */
     @Select("SELECT COUNT(*) FROM repair_order WHERE worker_id = #{workerId} AND status = 4")
     Integer countCompletedByWorkerId(Integer workerId);
+
+    /**
+     * 统计维修工当前负荷：已派单(2)或维修中(3)的工单数
+     */
+    @Select("SELECT COUNT(*) FROM repair_order WHERE worker_id = #{workerId} AND status IN (2,3)")
+    Integer countActiveByWorkerId(Integer workerId);
 
     // ===== 看板统计 =====
 
@@ -71,4 +83,35 @@ public interface RepairOrderMapper {
             "GROUP BY DATE(created_at) " +
             "ORDER BY date ASC")
     List<Map<String, Object>> selectTrend(@Param("days") int days);
+    @Select("<script>" +
+            "SELECT * FROM repair_order WHERE 1=1 " +
+            "<if test='status != null'> AND status = #{status}</if> " +
+            "<if test='category != null and category != \"\"'> AND category = #{category}</if> " +
+            "<if test='building != null and building != \"\"'> AND building LIKE CONCAT('%', #{building}, '%')</if> " +
+            "<if test='startDate != null and startDate != \"\"'> AND created_at &gt;= #{startDate}</if> " +
+            "<if test='endDate != null and endDate != \"\"'> AND created_at &lt;= #{endDate}</if> " +
+            "ORDER BY emergency_level DESC, created_at ASC " +
+            "LIMIT #{offset}, #{pageSize}" +
+            "</script>")
+    List<RepairOrder> search(@Param("status") Integer status,
+                             @Param("category") String category,
+                             @Param("building") String building,
+                             @Param("startDate") String startDate,
+                             @Param("endDate") String endDate,
+                             @Param("offset") int offset,
+                             @Param("pageSize") int pageSize);
+
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM repair_order WHERE 1=1 " +
+            "<if test='status != null'> AND status = #{status}</if> " +
+            "<if test='category != null and category != \"\"'> AND category = #{category}</if> " +
+            "<if test='building != null and building != \"\"'> AND building LIKE CONCAT('%', #{building}, '%')</if> " +
+            "<if test='startDate != null and startDate != \"\"'> AND created_at &gt;= #{startDate}</if> " +
+            "<if test='endDate != null and endDate != \"\"'> AND created_at &lt;= #{endDate}</if> " +
+            "</script>")
+    Long countSearch(@Param("status") Integer status,
+                     @Param("category") String category,
+                     @Param("building") String building,
+                     @Param("startDate") String startDate,
+                     @Param("endDate") String endDate);
 }

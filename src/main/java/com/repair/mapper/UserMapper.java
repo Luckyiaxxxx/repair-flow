@@ -27,6 +27,10 @@ public interface UserMapper {
 
             int updateById(User user);
 
+    //修改个人信息（手机号、真实姓名）
+    @Update("UPDATE user SET real_name=#{realName}, phone=#{phone} WHERE id=#{id}")
+    int updateProfile(@Param("id") Integer id, @Param("realName") String realName, @Param("phone") String phone);
+
     //按id查询
     @Select("SELECT * FROM user WHERE id = #{id}")
     User selectById(Integer id);

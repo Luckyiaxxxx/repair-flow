@@ -31,6 +31,15 @@ public interface UserService {
      */
     User getUserByUsername(String username);
 
+    /**
+     * 修改个人信息（手机号、真实姓名）
+     * @param userId 用户ID
+     * @param realName 真实姓名
+     * @param phone 手机号
+     * @return 修改后的用户信息
+     */
+    User updateProfile(Integer userId, String realName, String phone);
+
 //    /**
 //     * 查询所有维修工的绩效统计
 //     */

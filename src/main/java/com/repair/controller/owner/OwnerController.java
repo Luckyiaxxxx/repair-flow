@@ -4,10 +4,14 @@ package com.repair.controller.owner;
 
 import com.repair.common.Result;
 import com.repair.common.ValidationGroups;
+import com.repair.entity.Announcement;
 import com.repair.entity.Evaluation;
+import com.repair.entity.Feedback;
 import com.repair.entity.RepairOrder;
 import com.repair.entity.User;
+import com.repair.service.AnnouncementService;
 import com.repair.service.EvaluationService;
+import com.repair.service.FeedbackService;
 import com.repair.service.RepairOrderService;
 import com.repair.service.UserService;
 import com.repair.util.JwtUtil;
@@ -39,6 +43,12 @@ public class OwnerController {
 
     @Autowired
     private RedisUtil redisUtil;
+
+    @Autowired
+    private AnnouncementService announcementService;
+
+    @Autowired
+    private FeedbackService feedbackService;
 
     @GetMapping("/test/redis")
     public Result<String> testRedis() {
@@ -115,6 +125,34 @@ public class OwnerController {
     public Result<String> deleteOrder(@PathVariable Integer orderId, @RequestParam Integer ownerId){
         repairOrderService.deleteOrder(orderId, ownerId);
         return Result.success("删除成功");
+    }
+
+    //首页公告列表
+    @GetMapping("/announcements")
+    public Result<List<Announcement>> listAnnouncements() {
+        List<Announcement> announcements = announcementService.listPublishedAnnouncements();
+        return Result.success(announcements);
+    }
+
+    //提交投诉建议
+    @PostMapping("/feedbacks")
+    public Result<Feedback> submitFeedback(@RequestBody Feedback feedback) {
+        Feedback saved = feedbackService.submitFeedback(feedback);
+        return Result.success(saved);
+    }
+
+    //我的投诉建议列表
+    @GetMapping("/feedbacks")
+    public Result<List<Feedback>> getMyFeedbacks(@RequestParam Integer ownerId) {
+        List<Feedback> feedbacks = feedbackService.getFeedbacksByOwnerId(ownerId);
+        return Result.success(feedbacks);
+    }
+
+    //投诉建议详情
+    @GetMapping("/feedbacks/{id}")
+    public Result<Feedback> getFeedbackDetail(@PathVariable Integer id) {
+        Feedback feedback = feedbackService.getFeedbackById(id);
+        return Result.success(feedback);
     }
 
 }

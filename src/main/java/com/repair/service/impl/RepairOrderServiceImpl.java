@@ -1,10 +1,15 @@
 package com.repair.service.impl;
 
 import com.repair.common.BusinessException;
+import com.repair.dto.CompleteOrderRequest;
 import com.repair.entity.Evaluation;
+import com.repair.entity.Material;
+import com.repair.entity.MaterialConsumption;
 import com.repair.entity.RepairOrder;
 import com.repair.entity.User;
 import com.repair.mapper.EvaluationMapper;
+import com.repair.mapper.MaterialConsumptionMapper;
+import com.repair.mapper.MaterialMapper;
 import com.repair.mapper.RepairOrderMapper;
 import com.repair.mapper.UserMapper;
 import com.repair.service.RepairOrderService;
@@ -14,9 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -37,6 +45,12 @@ public class RepairOrderServiceImpl implements RepairOrderService {
 
     @Autowired
     private EvaluationMapper evaluationMapper;
+
+    @Autowired
+    private MaterialMapper materialMapper;
+
+    @Autowired
+    private MaterialConsumptionMapper materialConsumptionMapper;
 
     @Autowired
     private RedisUtil redisUtil;
@@ -66,7 +80,7 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         order.setUnit(order.getUnit()!=null?order.getUnit():owner.getUnit());
         order.setRoom(order.getRoom() != null ? order.getRoom() : owner.getRoom());
 
-        //5.生成工单编号：RU+时间戳 +4位随机数
+        //5.生成工单编号：RU+日期+4位自增序号
         String orderNo = generateOrderNo();
         order.setOrderNo(orderNo);
 
@@ -151,6 +165,11 @@ public class RepairOrderServiceImpl implements RepairOrderService {
         redisUtil.set(cacheKey, order, CACHE_EXPIRE_TIME, TimeUnit.MINUTES);
         System.out.println("报修单已缓存"+orderId);
         return order;
+
+
+
+
+
     }
 
     @Override
@@ -167,7 +186,7 @@ public class RepairOrderServiceImpl implements RepairOrderService {
             throw new BusinessException("该报单不存在");
         }
 
-        //2.校验保修单状态是否位“代派单”
+        //2.校验保修单状态是否位"代派单"
         if(order.getStatus()!=1){
             throw new BusinessException("该报修单已被处理，无法派单");
         }
@@ -181,19 +200,27 @@ public class RepairOrderServiceImpl implements RepairOrderService {
             throw new BusinessException("该用户不是维修工");
         }
 
-        //4.校验客服是否存在
+        //4.校验维修工当前负荷：已派单(2)、维修中(3)的工单数达到max_workload则拒绝派单
+        if(worker.getMaxWorkload() != null && worker.getMaxWorkload() > 0){
+            int currentLoad = repairOrderMapper.countActiveByWorkerId(workerId);
+            if(currentLoad >= worker.getMaxWorkload()){
+                throw new BusinessException("该维修工已满负荷，请选择其他维修工");
+            }
+        }
+
+        //5.校验客服是否存在
         User dispatcher = userMapper.selectById(dispatcherId);
         if(dispatcher ==null){
             throw new BusinessException("客服不存在");
         }
 
-        //5.更新报修单
+        //6.更新报修单
         order.setWorkerId(workerId);
         order.setDispatcherId(dispatcherId);
         order.setStatus(2);
         order.setAssignedAt(LocalDateTime.now());
 
-        //6.保存到数据库
+        //7.保存到数据库
         repairOrderMapper.updateById(order);
     }
 
@@ -215,7 +242,7 @@ public class RepairOrderServiceImpl implements RepairOrderService {
             throw new BusinessException("报修单不存在");
         }
 
-        //2.校验报修单状态是否为“已派单”
+        //2.校验报修单状态是否为"已派单"
         if(order.getStatus()!=2){
             throw new BusinessException("该报修单无法接单");
         }
@@ -240,40 +267,72 @@ public class RepairOrderServiceImpl implements RepairOrderService {
 
     @Override
     @Transactional
-    public void completeOrder(Integer orderId,String repairNote,Integer repairDuration,Double laborCost,Double materialCost){
+    public void completeOrder(Integer orderId, CompleteOrderRequest request){
         //1.校验报修单是否存在
         RepairOrder order =repairOrderMapper.selectById(orderId);
         if(order == null){
             throw new BusinessException("保修单不存在");
         }
 
-        //2.校验报修单状态是否为“维修中”
+        //2.校验报修单状态是否为"维修中"
         if(order.getStatus()!=3){
             throw new BusinessException("该保修单无法完工");
         }
 
         //3.校验维修记录不能为空
-        if(repairNote==null || repairNote.trim().isEmpty()){
+        if(request.getRepairNote()==null || request.getRepairNote().trim().isEmpty()){
             throw new BusinessException("维修记录不能为空");
         }
 
         //4.校验维修耗时不能为空
-        if(repairDuration ==null ||repairDuration<=0){
+        if(request.getRepairDuration() ==null ||request.getRepairDuration()<=0){
             throw new BusinessException("维修耗时必须大于0");
         }
 
-        //5.更新报修单
+        //5.处理物料消耗：自动扣库存 + 计算物料总费用
+        double totalMaterialCost = 0.0;
+        if(request.getMaterials() != null && !request.getMaterials().isEmpty()){
+            for(CompleteOrderRequest.MaterialItem item : request.getMaterials()){
+                if(item.getMaterialId() == null){
+                    throw new BusinessException("物料ID不能为空");
+                }
+                if(item.getQuantity() == null || item.getQuantity() <= 0){
+                    throw new BusinessException("物料消耗数量必须大于0");
+                }
+                Material material = materialMapper.selectById(item.getMaterialId());
+                if(material == null){
+                    throw new BusinessException("物料不存在：ID=" + item.getMaterialId());
+                }
+                if(material.getStock() < item.getQuantity()){
+                    throw new BusinessException("物料[" + material.getName() + "]库存不足，当前库存：" + material.getStock() + "，需要：" + item.getQuantity());
+                }
+                int rows = materialMapper.deductStock(item.getMaterialId(), item.getQuantity());
+                if(rows <= 0){
+                    throw new BusinessException("物料[" + material.getName() + "]扣减库存失败");
+                }
+                MaterialConsumption consumption = new MaterialConsumption();
+                consumption.setOrderId(orderId);
+                consumption.setMaterialId(item.getMaterialId());
+                consumption.setQuantity(item.getQuantity());
+                materialConsumptionMapper.insert(consumption);
+                if(material.getPrice() != null){
+                    totalMaterialCost += material.getPrice() * item.getQuantity();
+                }
+            }
+        }
+
+        //6.更新报修单
         order.setStatus(4);
-        order.setRepairNote(repairNote);
-        order.setRepairDuration(repairDuration);
-        order.setLaborCost(laborCost);
-        order.setMaterialCost(materialCost);
+        order.setRepairNote(request.getRepairNote());
+        order.setRepairDuration(request.getRepairDuration());
+        order.setLaborCost(request.getLaborCost());
+        order.setMaterialCost(totalMaterialCost);
         order.setCompletedAt(LocalDateTime.now());
 
-        //6.保存
+        //7.保存
         repairOrderMapper.updateById(order);
 
-        //7.清除缓存
+        //8.清除缓存
         String orderCacheKey = CACHE_KEY_ORDER +orderId;
         String listCacheKey = CACHE_KEY_ORDERS + order.getOwnerId();
         redisUtil.delete(orderCacheKey);
@@ -343,11 +402,33 @@ public class RepairOrderServiceImpl implements RepairOrderService {
     }
 
     /**
-     *生成工单编号：RU+yyyyMMddHHmmss+4位随机数
+     *生成工单编号：RU+yyyyMMdd+4位自增序号（每日从0001开始）
      */
     private String generateOrderNo(){
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String random = String.format("%04d",(int)(Math.random()*10000));
-        return "RU"+timestamp+random;
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String prefix = "RU" + date;
+        String maxOrderNo = repairOrderMapper.selectMaxOrderNoByPrefix(prefix);
+        int seq = 1;
+        if(maxOrderNo != null && !maxOrderNo.isEmpty()){
+            seq = Integer.parseInt(maxOrderNo.substring(maxOrderNo.length() - 4)) + 1;
+        }
+        return prefix + String.format("%04d", seq);
+    }
+
+    @Override
+    public Map<String, Object> searchOrders(Integer status, String category, String building, String startDate, String endDate, Integer page, Integer pageSize){
+        if(page == null || page < 1) page = 1;
+        if(pageSize == null || pageSize < 1) pageSize = 10;
+        int offset = (page - 1) * pageSize;
+
+        Long total = repairOrderMapper.countSearch(status, category, building, startDate, endDate);
+        List<RepairOrder> list = repairOrderMapper.search(status, category, building, startDate, endDate, offset, pageSize);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("total", total);
+        result.put("list", list);
+        result.put("page", page);
+        result.put("pageSize", pageSize);
+        return result;
     }
 }
