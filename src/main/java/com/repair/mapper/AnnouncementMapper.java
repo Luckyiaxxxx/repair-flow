@@ -28,4 +28,7 @@ public interface AnnouncementMapper {
 
     @Select("SELECT * FROM announcement WHERE status = 1 ORDER BY is_top DESC, created_at DESC")
     List<Announcement> selectPublished();
+
+    @Select("SELECT COUNT(*) FROM announcement WHERE status = 1")
+    Long countPublished();
 }

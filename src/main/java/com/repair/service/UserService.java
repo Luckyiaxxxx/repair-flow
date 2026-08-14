@@ -40,8 +40,37 @@ public interface UserService {
      */
     User updateProfile(Integer userId, String realName, String phone);
 
-//    /**
-//     * 查询所有维修工的绩效统计
-//     */
-//    List<Map<String,Object>> getWorkerPerformanceList();
+    // ==================== 用户管理（管理员） ====================
+
+    /**
+     * 分页查询用户列表（角色/关键字过滤），密码字段脱敏
+     */
+    Map<String, Object> listUsers(Integer role, String keyword, Integer page, Integer pageSize);
+
+    /**
+     * 禁用/启用账号
+     */
+    void updateUserStatus(Integer id, Integer status);
+
+    /**
+     * 重置密码
+     */
+    void resetPassword(Integer id, String newPassword);
+
+    // ==================== 维修工档案（管理员） ====================
+
+    /**
+     * 维修工列表（技能/在岗状态过滤），密码字段脱敏
+     */
+    List<User> listWorkers(String skill, Integer onDuty);
+
+    /**
+     * 维修工档案详情（role=3）
+     */
+    User getWorkerDetail(Integer id);
+
+    /**
+     * 更新维修工档案（技能标签/在岗状态/服务区域/最大接单量）
+     */
+    User updateWorkerProfile(Integer id, String skill, Integer onDuty, String serviceArea, Integer maxWorkload);
 }

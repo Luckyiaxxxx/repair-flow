@@ -4,14 +4,20 @@ package com.repair.controller.owner;
 
 import com.repair.common.Result;
 import com.repair.common.ValidationGroups;
+import com.repair.dto.MessageRequest;
 import com.repair.entity.Announcement;
 import com.repair.entity.Evaluation;
 import com.repair.entity.Feedback;
+import com.repair.entity.OrderMessage;
+import com.repair.entity.RepairCategory;
 import com.repair.entity.RepairOrder;
 import com.repair.entity.User;
 import com.repair.service.AnnouncementService;
+import com.repair.service.BuildingService;
 import com.repair.service.EvaluationService;
 import com.repair.service.FeedbackService;
+import com.repair.service.OrderMessageService;
+import com.repair.service.RepairCategoryService;
 import com.repair.service.RepairOrderService;
 import com.repair.service.UserService;
 import com.repair.util.JwtUtil;
@@ -49,6 +55,15 @@ public class OwnerController {
 
     @Autowired
     private FeedbackService feedbackService;
+
+    @Autowired
+    private OrderMessageService orderMessageService;
+
+    @Autowired
+    private RepairCategoryService repairCategoryService;
+
+    @Autowired
+    private BuildingService buildingService;
 
     @GetMapping("/test/redis")
     public Result<String> testRedis() {
@@ -134,6 +149,48 @@ public class OwnerController {
         return Result.success(announcements);
     }
 
+    //标记公告已读（幂等）
+    @PostMapping("/announcements/{id}/read")
+    public Result<String> markAnnouncementRead(@PathVariable Integer id, @RequestParam Integer userId) {
+        announcementService.markRead(id, userId);
+        return Result.success("已标记为已读");
+    }
+
+    //未读公告数（红点）
+    @GetMapping("/announcements/unread-count")
+    public Result<Long> getAnnouncementUnreadCount(@RequestParam Integer userId) {
+        long count = announcementService.getUnreadCount(userId);
+        return Result.success(count);
+    }
+
+    //公告列表（带已读状态）
+    @GetMapping("/announcements/with-status")
+    public Result<List<Map<String, Object>>> listAnnouncementsWithStatus(@RequestParam Integer userId) {
+        List<Map<String, Object>> announcements = announcementService.listPublishedWithReadStatus(userId);
+        return Result.success(announcements);
+    }
+
+    //启用中的报修类别（报修表单选择）
+    @GetMapping("/categories")
+    public Result<List<RepairCategory>> listEnabledCategories() {
+        List<RepairCategory> categories = repairCategoryService.listEnabledCategories();
+        return Result.success(categories);
+    }
+
+    //启用中的楼栋及单元（报修表单选择）
+    @GetMapping("/buildings")
+    public Result<List<Map<String, Object>>> listEnabledBuildings() {
+        List<Map<String, Object>> buildings = buildingService.listEnabledBuildingsWithUnits();
+        return Result.success(buildings);
+    }
+
+    //业主端首页统计
+    @GetMapping("/statistics")
+    public Result<Map<String, Object>> getStatistics(@RequestParam Integer ownerId){
+        Map<String, Object> data = repairOrderService.getOwnerStatistics(ownerId);
+        return Result.success(data);
+    }
+
     //提交投诉建议
     @PostMapping("/feedbacks")
     public Result<Feedback> submitFeedback(@RequestBody Feedback feedback) {
@@ -153,6 +210,38 @@ public class OwnerController {
     public Result<Feedback> getFeedbackDetail(@PathVariable Integer id) {
         Feedback feedback = feedbackService.getFeedbackById(id);
         return Result.success(feedback);
+    }
+
+    // ===== A组：工单流程增强 =====
+
+    //取消报修（仅待派单可取消）
+    @PostMapping("/orders/{orderId}/cancel")
+    public Result<String> cancelOrder(@PathVariable Integer orderId, @RequestParam Integer ownerId){
+        repairOrderService.cancelOrder(orderId, ownerId);
+        return Result.success("取消成功");
+    }
+
+    //催单（30分钟间隔、每单最多5次）
+    @PostMapping("/orders/{orderId}/urge")
+    public Result<String> urgeOrder(@PathVariable Integer orderId, @RequestParam Integer ownerId){
+        repairOrderService.urgeOrder(orderId, ownerId);
+        return Result.success("催单成功");
+    }
+
+    //发送工单留言
+    @PostMapping("/orders/{orderId}/messages")
+    public Result<OrderMessage> sendMessage(@PathVariable Integer orderId,
+                                            @RequestParam Integer ownerId,
+                                            @RequestBody MessageRequest request){
+        OrderMessage message = orderMessageService.sendMessage(orderId, ownerId, 1, request.getContent());
+        return Result.success(message);
+    }
+
+    //查看工单留言
+    @GetMapping("/orders/{orderId}/messages")
+    public Result<List<OrderMessage>> getMessages(@PathVariable Integer orderId, @RequestParam Integer ownerId){
+        List<OrderMessage> messages = orderMessageService.getMessages(orderId, ownerId, 1);
+        return Result.success(messages);
     }
 
 }

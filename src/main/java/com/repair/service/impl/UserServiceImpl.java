@@ -2,14 +2,11 @@ package com.repair.service.impl;
 
 import com.repair.common.BusinessException;
 import com.repair.entity.User;
-import com.repair.mapper.EvaluationMapper;
 import com.repair.mapper.UserMapper;
-import com.repair.mapper.RepairOrderMapper;
 import com.repair.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,12 +15,6 @@ import java.util.Map;
 public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
-
-    @Autowired
-    private RepairOrderMapper repairOrderMapper;
-
-    @Autowired
-    private EvaluationMapper evaluationMapper;
 
     @Override
     public User register(User user){
@@ -143,31 +134,115 @@ public class UserServiceImpl implements UserService {
         return userMapper.selectById(userId);
     }
 
-//    @Override
-//    public List<Map<String,Object>> getworkerPerformanceList() {
-//        //1.查询所有维修工
-//        List<User> workers = userMapper.selectByRole(3);
-//        if(workers ==null||workers.isEmpty()){
-//            return new ArrayList<>();
-//        }
-//        List<Map<String,Object>> result = new ArrayList<>();
-//
-//        for(User worker : workers){
-//            Map<String,Object> dto = new LinkedHashMap<>();
-//            dto.put("workerId",worker.getId());
-//            dto.put("realName",worker.getRealName());
-//            dto.put("skill",worker.getSkill());
-//
-//            //2.统计完工数
-//            Integer completedCount = repairOrderMapper.countCompletedByWorkerId(worker.getId());
-//            dto.put("completedCount",completedCount!=null?completedCount:0);
-//
-//            //3.统计完工率
-//            Integer totalReviews = evaluationMapper.selectCountByWorkerId(worker.getId());
-//            dto.put("totalReviews",totalReviews!=null?totalReviews:0);
-//
-//            //4.统计好评数
-//            Integer goodReviews = evaluationMapper
-//        }
-//    }
+    // ==================== 用户管理（管理员） ====================
+
+    @Override
+    public Map<String, Object> listUsers(Integer role, String keyword, Integer page, Integer pageSize) {
+        if (page == null || page < 1) page = 1;
+        if (pageSize == null || pageSize < 1) pageSize = 10;
+        int offset = (page - 1) * pageSize;
+
+        Long total = userMapper.countPage(role, keyword);
+        List<User> list = userMapper.selectPage(role, keyword, offset, pageSize);
+        for (User user : list) {
+            user.setPassword(null);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total", total);
+        result.put("list", list);
+        result.put("page", page);
+        result.put("pageSize", pageSize);
+        return result;
+    }
+
+    @Override
+    public void updateUserStatus(Integer id, Integer status) {
+        if (id == null) {
+            throw new BusinessException("用户ID不能为空");
+        }
+        if (status == null || (status != 0 && status != 1)) {
+            throw new BusinessException("状态值只能为0或1");
+        }
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        if (user.getRole() != null && user.getRole() == 4) {
+            throw new BusinessException("管理员账号不允许禁用/启用操作");
+        }
+        userMapper.updateStatus(id, status);
+    }
+
+    @Override
+    public void resetPassword(Integer id, String newPassword) {
+        if (id == null) {
+            throw new BusinessException("用户ID不能为空");
+        }
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new BusinessException("新密码不能为空");
+        }
+        if (newPassword.length() < 6 || newPassword.length() > 20) {
+            throw new BusinessException("密码长度必须在6-20位之间");
+        }
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        userMapper.updatePassword(id, newPassword);
+    }
+
+    // ==================== 维修工档案（管理员） ====================
+
+    @Override
+    public List<User> listWorkers(String skill, Integer onDuty) {
+        if (onDuty != null && onDuty != 0 && onDuty != 1) {
+            throw new BusinessException("在岗状态值只能为0或1");
+        }
+        List<User> workers = userMapper.selectWorkers(skill, onDuty);
+        for (User worker : workers) {
+            worker.setPassword(null);
+        }
+        return workers;
+    }
+
+    @Override
+    public User getWorkerDetail(Integer id) {
+        User user = getUserById(id);
+        if (user.getRole() == null || user.getRole() != 3) {
+            throw new BusinessException("该用户不是维修工");
+        }
+        user.setPassword(null);
+        return user;
+    }
+
+    @Override
+    public User updateWorkerProfile(Integer id, String skill, Integer onDuty, String serviceArea, Integer maxWorkload) {
+        User user = getUserById(id);
+        if (user.getRole() == null || user.getRole() != 3) {
+            throw new BusinessException("该用户不是维修工");
+        }
+        if (onDuty != null && onDuty != 0 && onDuty != 1) {
+            throw new BusinessException("在岗状态值只能为0或1");
+        }
+        if (maxWorkload != null && maxWorkload < 1) {
+            throw new BusinessException("最大接单量不能小于1");
+        }
+        if (serviceArea != null && serviceArea.length() > 255) {
+            throw new BusinessException("服务区域长度不能超过255位");
+        }
+
+        user.setSkill(skill != null ? skill : user.getSkill());
+        Integer newOnDuty = onDuty != null ? onDuty : (user.getOnDuty() != null ? user.getOnDuty() : 1);
+        user.setOnDuty(newOnDuty);
+        user.setServiceArea(serviceArea != null ? serviceArea : user.getServiceArea());
+        user.setMaxWorkload(maxWorkload != null ? maxWorkload : user.getMaxWorkload());
+        int rows = userMapper.updateWorkerProfile(user);
+        if (rows <= 0) {
+            throw new BusinessException("更新失败，请重试");
+        }
+        User updated = userMapper.selectById(id);
+        updated.setPassword(null);
+        return updated;
+    }
 }

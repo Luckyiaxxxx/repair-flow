@@ -61,6 +61,28 @@ public class RepairOrder {
 
     private Integer isTimeout;
 
+    // 催单
+    private Integer urgeCount;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
+    private LocalDateTime lastUrgeAt;
+
+    // 关闭（取消/驳回/超时）
+    private String closeReason;
+    private Integer closedBy;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
+    private LocalDateTime closedAt;
+
+    // 预约上门时间
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Shanghai")
+    private LocalDateTime preferredTimeStart;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Shanghai")
+    private LocalDateTime preferredTimeEnd;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Shanghai")
+    private LocalDateTime confirmedTime;
+
+    // 协助维修工
+    private Integer helperId;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createdAt;
 

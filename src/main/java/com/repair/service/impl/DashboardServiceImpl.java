@@ -92,6 +92,16 @@ public class DashboardServiceImpl implements DashboardService {
         }
         data.put("类别分布", categoryMap);
 
+        // 6. 各楼栋报修分布
+        List<Map<String, Object>> buildingData = repairOrderMapper.countByBuilding();
+        Map<String, Long> buildingMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : buildingData) {
+            String building = row.get("building") != null ? row.get("building").toString() : "未知";
+            Long count = ((Number) row.get("count")).longValue();
+            buildingMap.put(building, count);
+        }
+        data.put("区域分布", buildingMap);
+
         return data;
     }
 

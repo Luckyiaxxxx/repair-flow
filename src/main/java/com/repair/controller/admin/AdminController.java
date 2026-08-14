@@ -11,6 +11,7 @@ import com.repair.service.AnnouncementService;
 import com.repair.service.DashboardService;
 import com.repair.service.FeedbackService;
 import com.repair.service.MaterialService;
+import com.repair.service.MessageService;
 import com.repair.service.RepairOrderService;
 import org.apache.ibatis.annotations.Delete;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ public class AdminController {
 
     @Autowired
     private FeedbackService feedbackService;
+
+    @Autowired
+    private MessageService messageService;
 
     @GetMapping("/hello")
     public Result<String> hello(){
@@ -110,6 +114,19 @@ public class AdminController {
             @RequestParam(defaultValue = "10") Integer pageSize){
         Map<String, Object> data = repairOrderService.searchOrders(status, category, building, startDate, endDate, page, pageSize);
         return Result.success(data);
+    }
+
+    @GetMapping("/orders/stats-by-building")
+    public Result<List<Map<String, Object>>> statsByBuilding() {
+        List<Map<String, Object>> data = repairOrderService.getBuildingStats();
+        return Result.success(data);
+    }
+
+    //手动触发评价提醒扫描（hours 不传用配置默认值）
+    @PostMapping("/messages/evaluate-reminders")
+    public Result<String> triggerEvaluateReminders(@RequestParam(required = false) Integer hours) {
+        int sent = messageService.sendEvaluateReminders(hours);
+        return Result.success("已发送 " + sent + " 条评价提醒");
     }
 
     // ==================== 公告管理 ====================

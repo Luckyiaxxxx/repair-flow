@@ -39,6 +39,8 @@ public class User {
     private String room;
     private String skill;
     private Integer maxWorkload;
+    private Integer onDuty;
+    private String serviceArea;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createdAt;

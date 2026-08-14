@@ -48,3 +48,15 @@ jwt:
   secret: repair-flow-secret-key-2024-this-is-256-bit-secret-key
   expiration: 7200000          # 2小时
 
+# ---------- 工单流程配置 ----------
+repair:
+  order:
+    dispatch-timeout-hours: 24       # 待派单超时（小时）
+    accept-timeout-hours: 12         # 待接单超时（小时）
+    complete-timeout-hours: 48       # 维修超时（小时）
+    auto-close-grace-hours: 24       # 待派单超时后的宽限期（小时），超过自动关闭为7=超时关闭
+    urge-min-interval-minutes: 30    # 催单最小间隔（分钟）
+    urge-max-count: 5                # 每单最大催单次数
+    timeout-scan-ms: 300000          # 超时扫描间隔（毫秒）
+    evaluate-remind-hours: 24        # 已完工未评价超时提醒（小时）
+
